@@ -1,6 +1,6 @@
 # TensorFlow Profiler UI
 
-The TensorFlow Profiler (TFProf) UI provides a visual interface for profiling TensorFlow models.
+This is an enhanced version of the [TensorFlow Profiler (TFProf)](https://github.com/tensorflow/profiler-ui). With the enhanced TFProf, users are able to view multiple profile contexts on the same timeline page.
 
 # Installation
 1) Install Python dependencies.
@@ -11,7 +11,7 @@ The TensorFlow Profiler (TFProf) UI provides a visual interface for profiling Te
 3) Create a profile context file using the [tf.contrib.tfprof.ProfileContext](https://github.com/tensorflow/tensorflow/blob/v1.8.0/tensorflow/python/profiler/profile_context.py#L110-L148) class.
 3) Start the UI.
    ```s
-   python ui.py --profile_context_path=/path/to/your/profile.context
+   python ui.py --profile_context_path=/path/to/your/profile/dir
    ```
 
 # Learn more
