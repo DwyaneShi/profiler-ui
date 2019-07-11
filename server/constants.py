@@ -16,11 +16,12 @@
 import os
 
 # Locations for temporary files.
-PROFILER_LOG_DIR = '/tmp/tensorflow/profiler'
-PROFILER_LOG_PATH = os.path.join(PROFILER_LOG_DIR, 'profiler-ui.log')
-PROFILER_PPROF_IMAGE_PATH = os.path.join(PROFILER_LOG_DIR,
-                                         'profiler-ui.pprof.png')
-PROFILER_TIMELINE_HTML_PATH = os.path.join(PROFILER_LOG_DIR, 'profiler-ui.html')
+PROFILER_TMP_DIR = '/tmp/tensorflow/profiler'
+PROFILER_COMMON_PREFIX = 'profiler-ui.'
+PROFILER_TMP_NAME = PROFILER_COMMON_PREFIX + 'tmp'
+PROFILER_PPROF_IMAGE_NAME = PROFILER_COMMON_PREFIX + 'pprof.png'
+
+PROFILE_ROOT = 'traceEvents'
 
 # Limits on computation per trace.
 MAX_SERVING_SECS = 60 * 60

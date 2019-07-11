@@ -17,76 +17,117 @@ import json
 import os
 import subprocess
 from time import time as now
-from .constants import MDC_BASE_URL
-from .constants import PROFILER_LOG_DIR
-from .constants import PROFILER_LOG_PATH
-from .constants import PROFILER_PPROF_IMAGE_PATH
-from .constants import PROFILER_TIMELINE_HTML_PATH
-from .utils import remove_tmp_files
+from .constants import *
+from .utils import *
 import flask
+import tensorflow as tf
 from tensorflow import gfile
 from tensorflow.python import pywrap_tensorflow as pwtf
+from tensorflow.python.pywrap_tensorflow import ProfilerFromFile
+from tensorflow.python.pywrap_tensorflow import DeleteProfiler
 from tensorflow.python.profiler import model_analyzer
 from tensorflow.python.profiler import profile_context
 
 
-def handle_loading_page():
+def handle_loading_page(profile_path):
   """Handles loading page requests."""
   return flask.render_template('loading.html')
 
-def handle_home_page():
+def handle_home_page(profile_path):
   """Handles home page requests."""
   return flask.render_template(
       'default.html', timestamp=now(), mdc_base_url=MDC_BASE_URL)
 
-def handle_profile_api():
+def handle_profile_api(profile_path):
   """Handles profile API requests."""
   options = json.loads(flask.request.args.get('options'))
 
   # Determine view and output format.
   if options['view'] == 'pprof':
     output_format = 'pprof'
-    options['view'] = 'code'
   elif options['view'] == 'graph':
     output_format = 'timeline'
   else:
     output_format = 'file'
 
-  # Produce a profile.
-  options['output'] = output_format + ':outfile=' + PROFILER_LOG_PATH
-  opts = model_analyzer._build_options(options)  # pylint: disable=protected-access
-  pwtf.Profile(options['view'].encode('utf-8'), opts.SerializeToString())
+  profile_dir = os.path.realpath(profile_path)
+  resources_dir = os.path.join(profile_dir, 'resources')
+  if not os.path.isdir(resources_dir):
+    gfile.MkDir(os.path.join(profile_dir, 'resources'))
 
   if output_format == 'pprof':
-    return produce_pprof_profile()
+    return produce_pprof_profile(profile_dir, resources_dir, options)
   elif output_format == 'timeline':
-    return produce_timeline_profile()
+    return produce_timeline_profile(profile_dir, resources_dir, options)
   else:
-    return load_profile(PROFILER_LOG_PATH)
+    return produce_other_profile(profile_dir, resources_dir, options)
 
-def produce_pprof_profile():
-  """Produces a pprof profile."""
-  subprocess.call([
-      'pprof', '-svg', '--nodecount=100', '--sample_index=1',
-      '-output={}'.format(PROFILER_PPROF_IMAGE_PATH), PROFILER_LOG_PATH
-  ])
-  return load_profile(PROFILER_PPROF_IMAGE_PATH)
+def produce_pprof_profile(profile_dir, resources_dir, options):
+  image_path = os.path.join(resources_dir, PROFILER_PPROF_IMAGE_NAME)
+  if not os.path.isfile(image_path):
+    tmp_path = os.path.join(resources_dir, PROFILER_COMMON_PREFIX + options['view'])
+    if not os.path.isfile(tmp_path):
+      options['view'] = 'code'
+      options['output'] = 'pprof:outfile=' + tmp_path
+      opts = model_analyzer._build_options(options)  # pylint: disable=protected-access
+      # Create profiler from the first profile context.
+      profile_context = get_first_profile_context(profile_dir)
+      ProfilerFromFile(profile_context.encode('utf-8'))
+      pwtf.Profile(options['view'].encode('utf-8'), opts.SerializeToString())
+      DeleteProfiler()
 
-def produce_timeline_profile():
+    """Produces a pprof profile."""
+    subprocess.call([
+        'pprof', '-svg', '--nodecount=100', '--sample_index=1',
+        '-output={}'.format(image_path), tmp_path 
+        ])
+  return load_profile(image_path)
+
+def produce_timeline_profile(profile_dir, resources_dir, options):
   """Produces a timeline profile."""
-  # Find the largest profile, since every step is profiled for the "graph"
-  # view, and the largest step tends to be the most informative.
-  # TODO: Optimize backend to only process largest step in this scenario.
-  largest_profile_size = 0
-  for file_name in gfile.ListDirectory(PROFILER_LOG_DIR):
-    if 'profiler-ui.log_' in file_name:
-      file_path = os.path.join(PROFILER_LOG_DIR, file_name)
-      with gfile.GFile(file_path, 'rb') as profile:
-        file_size = profile.size()
-        if largest_profile_size < file_size:
-          largest_profile_size = file_size
-          path = os.path.join(PROFILER_LOG_DIR, file_name)
-  return load_profile(path)
+  timeline_path = os.path.join(resources_dir, PROFILER_COMMON_PREFIX + 'timeline')
+  if not os.path.isfile(timeline_path):
+    profiles = {}
+    log_path = os.path.join(PROFILER_TMP_DIR, PROFILER_TMP_NAME)
+    options['output'] = 'timeline:outfile=' + log_path
+    opts = model_analyzer._build_options(options)  # pylint: disable=protected-access
+    for idx, prof in enumerate(gfile.ListDirectory(profile_dir)):
+      prof_file = os.path.join(profile_dir, prof)
+      if not os.path.isfile(prof_file):
+        continue
+      chosen_profile = os.path.join(resources_dir, PROFILER_TIMELINE_NAME + '_' + prof)
+      profiles[prof] = chosen_profile
+      if os.path.isfile(chosen_profile):
+        if idx == 0:
+          target_ts = get_timestamp(chosen_profile)
+        continue
+      tf.logging.info("Parse profile context %r" % prof_file)
+      remove_tmp_files()
+      # Parse profile context
+      ProfilerFromFile(prof_file.encode('utf-8'))
+      pwtf.Profile(options['view'].encode('utf-8'), opts.SerializeToString())
+      DeleteProfiler()
+      if idx == 0:
+        prof_name = get_informative_profile(PROFILER_TMP_DIR)
+      else:
+        prof_name = get_profile_by_timestamp(PROFILER_TMP_DIR, target_ts)
+      tf.logging.info("Choose %r as the most informative profile context for %r" % (prof_name, prof))
+      gfile.Copy(os.path.join(PROFILER_TMP_DIR, prof_name), chosen_profile, True)
+    merge_profiles(profiles, timeline_path)
+  return load_profile(timeline_path)
+
+def produce_other_profile(profile_dir, resources_dir, options):
+  other_path = os.path.join(resources_dir, PROFILER_COMMON_PREFIX + options['view'])
+  if not os.path.isfile(other_path):
+    options['output'] = 'file:outfile=' + other_path
+    opts = model_analyzer._build_options(options)  # pylint: disable=protected-access
+    # Create profiler from the first profile context.
+    profile_context = get_first_profile_context(profile_dir)
+    ProfilerFromFile(profile_context.encode('utf-8'))
+    pwtf.Profile(options['view'].encode('utf-8'), opts.SerializeToString())
+    DeleteProfiler()
+
+  return load_profile(other_path)
 
 def load_profile(path):
   """Returns profile contents and removes temporary files."""
