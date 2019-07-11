@@ -95,7 +95,7 @@ def produce_timeline_profile(profile_dir, resources_dir, options):
       prof_file = os.path.join(profile_dir, prof)
       if not os.path.isfile(prof_file):
         continue
-      chosen_profile = os.path.join(resources_dir, PROFILER_TIMELINE_NAME + '_' + prof)
+      chosen_profile = os.path.join(resources_dir, PROFILER_COMMON_PREFIX + 'timeline_' + prof)
       profiles[prof] = chosen_profile
       if os.path.isfile(chosen_profile):
         if idx == 0:
