@@ -119,14 +119,13 @@ def produce_timeline_profile(profile_dir, resources_dir, profile_cnt, options):
 
 def produce_other_profile(profile_dir, resources_dir, profile_cnt, options):
   other_path = os.path.join(resources_dir, PROFILER_COMMON_PREFIX + options['view'])
-  if not os.path.isfile(other_path):
-    options['output'] = 'file:outfile=' + other_path
-    opts = model_analyzer._build_options(options)  # pylint: disable=protected-access
-    # Create profiler from the first profile context.
-    profile_context = get_first_profile_context(profile_dir)
-    ProfilerFromFile(profile_context.encode('utf-8'))
-    pwtf.Profile(options['view'].encode('utf-8'), opts.SerializeToString())
-    DeleteProfiler()
+  options['output'] = 'file:outfile=' + other_path
+  opts = model_analyzer._build_options(options)  # pylint: disable=protected-access
+  # Create profiler from the first profile context.
+  profile_context = get_first_profile_context(profile_dir)
+  ProfilerFromFile(profile_context.encode('utf-8'))
+  pwtf.Profile(options['view'].encode('utf-8'), opts.SerializeToString())
+  DeleteProfiler()
 
   return load_profile(other_path)
 
