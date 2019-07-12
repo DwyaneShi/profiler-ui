@@ -137,8 +137,8 @@ def merge_profiles(profiles, merged_profile):
         if 'id' in item.keys():
           item['id'] += id_prefix
         merged_json[PROFILE_ROOT].append(item)
-  with open(merged_profile, 'w') as prof:
-    json.dump(merged_json, prof)
+    with open(merged_profile, 'w') as prof:
+      json.dump(merged_json, prof)
 
 def remove_tmp_files():
   """Removes temporary files created by the profiler."""
