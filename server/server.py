@@ -23,7 +23,7 @@ from .route_handlers import handle_profile_api
 from .utils import prepare_tmp_dir
 
 
-def start_server(profile_path, port, open_browser):
+def start_server(profile_path, profile_cnt, port, open_browser):
   """Starts Flask web server."""
 
   # Define and prepare directories.
@@ -46,18 +46,18 @@ def start_server(profile_path, port, open_browser):
   @app.route('/')
   def home():
     """Responds to request for home page."""
-    return handle_home_page(profile_path)
+    return handle_home_page(profile_path, profile_cnt)
 
   @app.route('/profile')
   def profile():
     """Responds to request for profile API."""
     # Build options.
-    return handle_profile_api(profile_path)
+    return handle_profile_api(profile_path, profile_cnt)
 
   @app.route('/loading')
   def loading():
     """Responds to request for loading page."""
-    return handle_loading_page(profile_path)
+    return handle_loading_page(profile_path, profile_cnt)
 
   # Define URL.
   host = '0.0.0.0'

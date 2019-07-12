@@ -26,11 +26,13 @@ from tensorflow import flags
 FLAGS = flags.FLAGS
 flags.DEFINE_integer('server_port', 7007, 'Flask server port.')
 flags.DEFINE_string('profile_context_path', '', 'Path to profile context.')
+flags.DEFINE_integer('successive_profile_context_count', 1, 'The number of successive profile contexts to show.')
 flags.DEFINE_boolean('browser', True, 'Open browser after startup.')
 
 
 def main(_):
   profile_path = os.path.expanduser(FLAGS.profile_context_path)
+  profile_cnt = FLAGS.successive_profile_context_count
 
   # Require "profile_context_path" flag.
   if not profile_path:
@@ -43,7 +45,7 @@ def main(_):
     return
 
   # Start server.
-  start_server(profile_path, FLAGS.server_port, FLAGS.browser)
+  start_server(profile_path, profile_cnt, FLAGS.server_port, FLAGS.browser)
 
 
 if __name__ == '__main__':

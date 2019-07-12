@@ -11,7 +11,7 @@ This is an enhanced version of the [TensorFlow Profiler (TFProf)](https://github
 3) Create a profile context file using the [tf.contrib.tfprof.ProfileContext](https://github.com/tensorflow/tensorflow/blob/v1.8.0/tensorflow/python/profiler/profile_context.py#L110-L148) class.
 3) Start the UI.
    ```s
-   python ui.py --profile_context_path=/path/to/your/profile/dir
+   python ui.py --profile_context_path=/path/to/your/profile/dir --successive_profile_context_count=3
    ```
 
 # Learn more
@@ -22,10 +22,3 @@ You can learn more about the TensorFlow Profiler's Python API and CLI [here](htt
 
 # Browser support
 Currently only [Chrome](https://www.google.com/chrome/) is supported.
-
-# Contributing
-Please see [our contributor's guide](/CONTRIBUTING.md)
-
-# Feature requests
-Want ideas for ways to contribute to the TensorFlow Profiler UI? Here are some requested features: 
-- Support multiple profile contexts at once ([#11](https://github.com/tensorflow/profiler-ui/issues/11))

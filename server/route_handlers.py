@@ -29,16 +29,16 @@ from tensorflow.python.profiler import model_analyzer
 from tensorflow.python.profiler import profile_context
 
 
-def handle_loading_page(profile_path):
+def handle_loading_page(profile_path, profile_cnt):
   """Handles loading page requests."""
   return flask.render_template('loading.html')
 
-def handle_home_page(profile_path):
+def handle_home_page(profile_path, profile_cnt):
   """Handles home page requests."""
   return flask.render_template(
       'default.html', timestamp=now(), mdc_base_url=MDC_BASE_URL)
 
-def handle_profile_api(profile_path):
+def handle_profile_api(profile_path, profile_cnt):
   """Handles profile API requests."""
   options = json.loads(flask.request.args.get('options'))
 
@@ -56,13 +56,13 @@ def handle_profile_api(profile_path):
     gfile.MkDir(os.path.join(profile_dir, 'resources'))
 
   if output_format == 'pprof':
-    return produce_pprof_profile(profile_dir, resources_dir, options)
+    return produce_pprof_profile(profile_dir, resources_dir, profile_cnt, options)
   elif output_format == 'timeline':
-    return produce_timeline_profile(profile_dir, resources_dir, options)
+    return produce_timeline_profile(profile_dir, resources_dir, profile_cnt, options)
   else:
-    return produce_other_profile(profile_dir, resources_dir, options)
+    return produce_other_profile(profile_dir, resources_dir, profile_cnt, options)
 
-def produce_pprof_profile(profile_dir, resources_dir, options):
+def produce_pprof_profile(profile_dir, resources_dir, profile_cnt, options):
   image_path = os.path.join(resources_dir, PROFILER_PPROF_IMAGE_NAME)
   if not os.path.isfile(image_path):
     tmp_path = os.path.join(resources_dir, PROFILER_COMMON_PREFIX + options['view'])
@@ -83,7 +83,7 @@ def produce_pprof_profile(profile_dir, resources_dir, options):
         ])
   return load_profile(image_path)
 
-def produce_timeline_profile(profile_dir, resources_dir, options):
+def produce_timeline_profile(profile_dir, resources_dir, profile_cnt, options):
   """Produces a timeline profile."""
   timeline_path = os.path.join(resources_dir, PROFILER_COMMON_PREFIX + 'timeline')
   if not os.path.isfile(timeline_path):
@@ -108,15 +108,16 @@ def produce_timeline_profile(profile_dir, resources_dir, options):
       pwtf.Profile(options['view'].encode('utf-8'), opts.SerializeToString())
       DeleteProfiler()
       if idx == 0:
-        prof_name = get_informative_profile(PROFILER_TMP_DIR)
+        prof_names = get_informative_profiles(PROFILER_TMP_DIR, profile_cnt)
+        target_ts = get_timestamp(os.path.join(PROFILER_TMP_DIR, prof_names[0]))
       else:
-        prof_name = get_profile_by_timestamp(PROFILER_TMP_DIR, target_ts)
-      tf.logging.info("Choose %r as the most informative profile context for %r" % (prof_name, prof))
-      gfile.Copy(os.path.join(PROFILER_TMP_DIR, prof_name), chosen_profile, True)
+        prof_names = get_profiles_by_timestamp(PROFILER_TMP_DIR, target_ts, profile_cnt)
+      tf.logging.info("Choose %r as the most informative profile context for %r" % (prof_names, prof))
+      gen_profile([os.path.join(PROFILER_TMP_DIR, name) for name in prof_names], chosen_profile)
     merge_profiles(profiles, timeline_path)
   return load_profile(timeline_path)
 
-def produce_other_profile(profile_dir, resources_dir, options):
+def produce_other_profile(profile_dir, resources_dir, profile_cnt, options):
   other_path = os.path.join(resources_dir, PROFILER_COMMON_PREFIX + options['view'])
   if not os.path.isfile(other_path):
     options['output'] = 'file:outfile=' + other_path
