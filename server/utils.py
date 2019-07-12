@@ -81,16 +81,28 @@ def gen_profile(profiles, target_profile):
     gfile.Copy(profiles[0], target_profile, True)
   else:
     target_json = {PROFILE_ROOT: []}
+    process_mapping = {}
     id_start = 0
-    for profile in profiles:
+    for idx, profile in enumerate(profiles):
       id_max = 0
+      pid_mapping = {}
       with open(profile, 'r') as prof:
         prof_json = json.load(prof)
         for item in prof_json[PROFILE_ROOT]:
+          # create pid mapping. pids assigned to processes for different profiles are different
+          if 'name' in item.keys() and item['name'] == PROFILE_PROCESS_TAG:
+            if idx == 0:
+              process_mapping[item['args']['name']] = item['pid']
+            else:
+              pid_mapping[item['pid']] = process_mapping[item['args']['name']]
+          # reassign correct pid
+          if idx > 0 and item['name'] != PROFILE_PROCESS_TAG and 'pid' in item.keys():
+            item['pid'] = pid_mapping[item['pid']]
           if 'id' in item.keys():
             id_max = max(id_max, item['id'])
             item['id'] += id_start
-          target_json[PROFILE_ROOT].append(item)
+          if idx == 0 or 'name' not in item.keys() or item['name'] != PROFILE_PROCESS_TAG:
+            target_json[PROFILE_ROOT].append(item)
       id_start += id_max + 1
   with open(target_profile, 'w') as prof:
     json.dump(target_json, prof)

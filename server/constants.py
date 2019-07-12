@@ -22,6 +22,7 @@ PROFILER_TMP_NAME = PROFILER_COMMON_PREFIX + 'tmp'
 PROFILER_PPROF_IMAGE_NAME = PROFILER_COMMON_PREFIX + 'pprof.png'
 
 PROFILE_ROOT = 'traceEvents'
+PROFILE_PROCESS_TAG = 'process_name'
 
 # Limits on computation per trace.
 MAX_SERVING_SECS = 60 * 60
